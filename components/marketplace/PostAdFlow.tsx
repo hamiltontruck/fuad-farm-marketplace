@@ -21,6 +21,7 @@ export type Listing = {
   icon: string;
   accent: string;
   time: string;
+  phone?: string;
   verified?: boolean;
   sample?: boolean;
 };
@@ -64,8 +65,18 @@ export default function PostAdFlow({ open, onClose, onComplete, defaultSeller = 
   const selectedCategory = useMemo(() => listingCategories.find((item) => item.id === category), [category]);
 
   useEffect(() => {
-    if (open) setSeller(defaultSeller);
-  }, [defaultSeller, open]);
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !loading) onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [loading, onClose, open]);
 
   if (!open) return null;
 
@@ -89,6 +100,13 @@ export default function PostAdFlow({ open, onClose, onComplete, defaultSeller = 
   function nextCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStep(1);
+  }
+
+  function selectTransaction(next: TransactionType) {
+    setTransaction(next);
+    setCondition(next === "buy" ? "Wanted" : next === "broker" ? "Service" : "New");
+    if (next === "broker") setPriceSuffix("percent");
+    else if (priceSuffix === "percent") setPriceSuffix("total");
   }
 
   function nextDetails(event: FormEvent<HTMLFormElement>) {
@@ -116,11 +134,10 @@ export default function PostAdFlow({ open, onClose, onComplete, defaultSeller = 
         description,
         icon: selectedCategory.icon,
         accent: selectedCategory.accent,
+        phone,
       };
-      const response = await fetch("/api/listings", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(draft) });
-      if (!response.ok) throw new Error("Maxxansa kuusuu hin dandeenye. Irra deebi'ii yaali.");
-      const body = (await response.json()) as { listing: { id: number } };
-      onComplete({ ...draft, id: String(body.listing.id), time: "Just now", verified: false });
+      await new Promise((resolve) => window.setTimeout(resolve, 550));
+      onComplete({ ...draft, id: `local-${Date.now()}`, time: "Just now", verified: false });
       setStep(3);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Maxxansi hin milkoofne.");
@@ -141,9 +158,9 @@ export default function PostAdFlow({ open, onClose, onComplete, defaultSeller = 
             <form onSubmit={nextCategory}>
               <div className="flow-heading"><span>STEP 01</span><h2 id="post-ad-title">Maal maxxansuu barbaadda?</h2><p>Gosa daldalaa fi category kee filadhu.</p></div>
               <div className="transaction-selector" role="radiogroup" aria-label="Listing transaction type">
-                <button type="button" role="radio" aria-checked={transaction === "sell"} className={transaction === "sell" ? "transaction-card active" : "transaction-card"} onClick={() => setTransaction("sell")}><span>🏷️</span><strong>Gurguruu</strong><small>I want to sell</small></button>
-                <button type="button" role="radio" aria-checked={transaction === "buy"} className={transaction === "buy" ? "transaction-card active" : "transaction-card"} onClick={() => setTransaction("buy")}><span>🛒</span><strong>Bitachuu</strong><small>I want to buy</small></button>
-                <button type="button" role="radio" aria-checked={transaction === "broker"} className={transaction === "broker" ? "transaction-card active" : "transaction-card"} onClick={() => setTransaction("broker")}><span>🤝</span><strong>Broker</strong><small>I connect both sides</small></button>
+                <button type="button" role="radio" aria-checked={transaction === "sell"} className={transaction === "sell" ? "transaction-card active" : "transaction-card"} onClick={() => selectTransaction("sell")}><span>🏷️</span><strong>Gurguruu</strong><small>I want to sell</small></button>
+                <button type="button" role="radio" aria-checked={transaction === "buy"} className={transaction === "buy" ? "transaction-card active" : "transaction-card"} onClick={() => selectTransaction("buy")}><span>🛒</span><strong>Bitachuu</strong><small>I want to buy</small></button>
+                <button type="button" role="radio" aria-checked={transaction === "broker"} className={transaction === "broker" ? "transaction-card active" : "transaction-card"} onClick={() => selectTransaction("broker")}><span>🤝</span><strong>Broker</strong><small>I connect both sides</small></button>
               </div>
               <div className="post-category-grid" role="radiogroup" aria-label="Listing category">
                 {listingCategories.map((item) => <button type="button" role="radio" aria-checked={category === item.id} className={category === item.id ? `post-category active ${item.accent}` : `post-category ${item.accent}`} key={item.id} onClick={() => setCategory(item.id)}><span>{item.icon}</span><strong>{item.oromo}</strong><small>{item.label}</small></button>)}
@@ -160,7 +177,7 @@ export default function PostAdFlow({ open, onClose, onComplete, defaultSeller = 
                 <label>Ad title<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Fkn: Samsung laptop haaraa gurgurama" minLength={4} maxLength={80} required /></label>
                 <div className="field-grid two-col no-gap-bottom">
                   <label>Price (ETB)<input type="number" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="0" min="0" required /></label>
-                  <label>Price unit<select value={priceSuffix} onChange={(event) => setPriceSuffix(event.target.value)}><option value="total">Total price</option><option value="kg">Per kg</option><option value="ton">Per ton</option><option value="gram">Per gram</option><option value="month">Per month</option><option value="piece">Per piece</option></select></label>
+                  <label>Price unit<select value={priceSuffix} onChange={(event) => setPriceSuffix(event.target.value)}><option value="total">Total price</option><option value="kg">Per kg</option><option value="ton">Per ton</option><option value="gram">Per gram</option><option value="month">Per month</option><option value="piece">Per piece</option><option value="percent">Commission %</option></select></label>
                 </div>
                 <div className="field-grid two-col no-gap-bottom">
                   <label>Condition<select value={condition} onChange={(event) => setCondition(event.target.value)}><option>New</option><option>Used</option><option>Fresh</option><option>Available</option><option>Wanted</option><option>Service</option></select></label>
@@ -185,6 +202,7 @@ export default function PostAdFlow({ open, onClose, onComplete, defaultSeller = 
               </div>
               <label className="confirm-check"><input type="checkbox" required /><span>Odeeffannoon ani galche sirrii dha; seera marketplace nan fudhadha.</span></label>
               <div className="safe-note"><span>🔒</span><p><strong>Lakkoofsi bilbilaa kee card irratti hin mul&apos;atu.</strong><br />Buyer “Contact” yeroo tuqu qofa itti fayyadama.</p></div>
+              <div className="local-mode-note"><span>⌁</span><p><strong>Maxxansi device kana irratti kuufama.</strong><br />Database project keessaa yeroo biraa wal qunnamsiifna.</p></div>
               {submitError && <p className="flow-error" role="alert">{submitError}</p>}
               <div className="flow-actions"><button className="secondary-action" type="button" onClick={() => setStep(1)} disabled={loading}>← Duubatti</button><button className="primary-action ripple" type="submit" disabled={loading}>{loading ? <><i className="spinner" /> Maxxansaa jira…</> : <>Maxxansa baasi <span>↑</span></>}</button></div>
             </form>

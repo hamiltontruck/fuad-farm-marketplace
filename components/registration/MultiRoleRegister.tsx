@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import RoleSelector, { roleOptions, type RoleId } from "./RoleSelector";
 import StepIndicator from "./StepIndicator";
 
-type RegistrationPayload = {
+export type RegistrationPayload = {
   role: RoleId;
   fullName: string;
   phone: string;
@@ -18,6 +18,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onComplete: (payload: RegistrationPayload) => void;
+  initialRole?: RoleId | null;
 };
 
 const specialtyLabels: Record<RoleId, { label: string; placeholder: string }> = {
@@ -32,9 +33,9 @@ const specialtyLabels: Record<RoleId, { label: string; placeholder: string }> = 
 
 const regions = ["Addis Ababa", "Oromia", "Amhara", "Somali", "Sidama", "Tigray", "Afar", "Harari", "Dire Dawa", "Benishangul-Gumuz", "Gambela", "South Ethiopia"];
 
-export default function MultiRoleRegister({ open, onClose, onComplete }: Props) {
+export default function MultiRoleRegister({ open, onClose, onComplete, initialRole = null }: Props) {
   const [step, setStep] = useState(0);
-  const [role, setRole] = useState<RoleId | null>(null);
+  const [role, setRole] = useState<RoleId | null>(initialRole);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [region, setRegion] = useState("");
@@ -45,6 +46,20 @@ export default function MultiRoleRegister({ open, onClose, onComplete }: Props) 
   const [submitError, setSubmitError] = useState("");
 
   const selectedRole = useMemo(() => roleOptions.find((item) => item.id === role), [role]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !loading) onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [loading, onClose, open]);
 
   if (!open) return null;
 
@@ -78,8 +93,7 @@ export default function MultiRoleRegister({ open, onClose, onComplete }: Props) 
     setSubmitError("");
     try {
       const payload = { role, fullName, phone, region, businessName, specialty, experience };
-      const response = await fetch("/api/profiles", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-      if (!response.ok) throw new Error("Galmee kuusuu hin dandeenye. Irra deebi'ii yaali.");
+      await new Promise((resolve) => window.setTimeout(resolve, 550));
       setStep(3);
       onComplete(payload);
     } catch (error) {
@@ -128,6 +142,7 @@ export default function MultiRoleRegister({ open, onClose, onComplete }: Props) 
               <div className="flow-heading"><span>STEP 03</span><h2 id="registration-title">Karoora jalqabaa kee fili.</h2><p>Yeroo ammaaf galmeen fi maxxansi jalqabaa bilisa.</p></div>
               <div className="plan-card selected-plan"><div className="plan-top"><span className="plan-icon">✦</span><div><strong>FUAD Standard</strong><small>Marketplace irratti jalqabuuf</small></div><em>Recommended</em></div><div className="plan-price"><strong>ETB 0</strong><span>/ registration</span></div><ul><li>✓ Profile role tokko</li><li>✓ Maxxansa jalqabaa bilisa</li><li>✓ Buyer &amp; broker network</li><li>✓ Dashboard access yeroo itti aanu</li></ul></div>
               <div className="safe-note"><span>🛡️</span><p><strong>Kaffaltiin hin barbaachisu.</strong><br />Fuad Esmart yeroo kaffaltii online dabalutti odeeffannoo siif erga.</p></div>
+              <div className="local-mode-note"><span>⌁</span><p><strong>Yeroo ammaaf device kana irratti kuufama.</strong><br />Database project keessaa yeroo biraa wal qunnamsiifna.</p></div>
               {submitError && <p className="flow-error" role="alert">{submitError}</p>}
               <div className="flow-actions"><button className="secondary-action" type="button" onClick={() => setStep(1)} disabled={loading}>← Duubatti</button><button className="primary-action ripple" type="button" onClick={finishRegistration} disabled={loading}>{loading ? <><i className="spinner" /> Galmeessaa jira…</> : <>Galmee xumuri <span>→</span></>}</button></div>
             </div>
