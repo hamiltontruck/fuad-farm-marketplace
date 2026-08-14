@@ -51,6 +51,7 @@ type Props = {
   onComplete: (listing: Listing) => void;
   defaultSeller?: string;
   language: Language;
+  initialTransaction?: TransactionType;
 };
 
 const locations = ["Addis Ababa", "Adama", "Dire Dawa", "Hawassa", "Bahir Dar", "Jigjiga", "Mekelle", "Jimma", "Shashemene", "Bishoftu"];
@@ -67,14 +68,14 @@ const postCopy: Record<Language, Record<string, string>> = {
   },
 };
 
-export default function PostAdFlow({ open, onClose, onComplete, defaultSeller = "", language }: Props) {
+export default function PostAdFlow({ open, onClose, onComplete, defaultSeller = "", language, initialTransaction = "sell" }: Props) {
   const [step, setStep] = useState(0);
-  const [transaction, setTransaction] = useState<TransactionType>("sell");
+  const [transaction, setTransaction] = useState<TransactionType>(initialTransaction);
   const [category, setCategory] = useState("");
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
-  const [priceSuffix, setPriceSuffix] = useState("total");
-  const [condition, setCondition] = useState("New");
+  const [priceSuffix, setPriceSuffix] = useState(initialTransaction === "broker" ? "percent" : "total");
+  const [condition, setCondition] = useState(initialTransaction === "buy" ? "Wanted" : initialTransaction === "broker" ? "Service" : "New");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [seller, setSeller] = useState(defaultSeller);
@@ -103,12 +104,12 @@ export default function PostAdFlow({ open, onClose, onComplete, defaultSeller = 
 
   function resetAndClose() {
     setStep(0);
-    setTransaction("sell");
+    setTransaction(initialTransaction);
     setCategory("");
     setTitle("");
     setPrice("");
-    setPriceSuffix("total");
-    setCondition("New");
+    setPriceSuffix(initialTransaction === "broker" ? "percent" : "total");
+    setCondition(initialTransaction === "buy" ? "Wanted" : initialTransaction === "broker" ? "Service" : "New");
     setLocation("");
     setDescription("");
     setSeller(defaultSeller);
