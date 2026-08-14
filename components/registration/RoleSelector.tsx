@@ -1,3 +1,5 @@
+import type { Language } from "../../lib/i18n";
+
 export type RoleId =
   | "farmer"
   | "manufacturer"
@@ -12,25 +14,41 @@ export const roleOptions: Array<{
   icon: string;
   label: string;
   english: string;
+  amharic: string;
   description: string;
+  descriptionEnglish: string;
+  descriptionAmharic: string;
 }> = [
-  { id: "farmer", icon: "👨‍🌾", label: "Qonnaan bulaa", english: "Farmer", description: "Oomisha qonnaa gurguri" },
-  { id: "manufacturer", icon: "🏭", label: "Oomishtaa", english: "Manufacturer", description: "Oomisha warshaa maxxansi" },
-  { id: "seller", icon: "🏪", label: "Gurguraa", english: "Seller", description: "Daldala kee guddisi" },
-  { id: "broker", icon: "🤝", label: "Broker", english: "Broker", description: "Bitataa fi gurguraa wal qunnamsiisi" },
-  { id: "electronics", icon: "💻", label: "Elektirooniksii", english: "Electronics", description: "Meeshaa technology gurguri" },
-  { id: "mineral", icon: "🪨", label: "Albuuda", english: "Mineral", description: "Albuuda biti, gurguri ykn broker ta'i" },
-  { id: "buyer", icon: "🛒", label: "Bitataa", english: "Buyer", description: "Wanta barbaaddu maxxansi" },
+  { id: "farmer", icon: "👨‍🌾", label: "Qonnaan bulaa", english: "Farmer", amharic: "ገበሬ", description: "Oomisha qonnaa gurguri", descriptionEnglish: "Sell farm products", descriptionAmharic: "የእርሻ ምርት ይሽጡ" },
+  { id: "manufacturer", icon: "🏭", label: "Oomishtaa", english: "Manufacturer", amharic: "አምራች", description: "Oomisha warshaa maxxansi", descriptionEnglish: "List manufactured goods", descriptionAmharic: "የፋብሪካ ምርት ያስተዋውቁ" },
+  { id: "seller", icon: "🏪", label: "Gurguraa", english: "Seller", amharic: "ሻጭ", description: "Daldala kee guddisi", descriptionEnglish: "Grow your business", descriptionAmharic: "ንግድዎን ያሳድጉ" },
+  { id: "broker", icon: "🤝", label: "Broker", english: "Broker", amharic: "ደላላ", description: "Bitataa fi gurguraa wal qunnamsiisi", descriptionEnglish: "Connect buyers and sellers", descriptionAmharic: "ገዢና ሻጭን ያገናኙ" },
+  { id: "electronics", icon: "💻", label: "Elektirooniksii", english: "Electronics", amharic: "ኤሌክትሮኒክስ", description: "Meeshaa technology gurguri", descriptionEnglish: "Sell technology products", descriptionAmharic: "የቴክኖሎጂ ዕቃዎችን ይሽጡ" },
+  { id: "mineral", icon: "🪨", label: "Albuuda", english: "Mineral", amharic: "ማዕድን", description: "Albuuda biti, gurguri ykn broker ta'i", descriptionEnglish: "Buy, sell or broker minerals", descriptionAmharic: "ማዕድን ይግዙ፣ ይሽጡ ወይም ያደላልሉ" },
+  { id: "buyer", icon: "🛒", label: "Bitataa", english: "Buyer", amharic: "ገዢ", description: "Wanta barbaaddu maxxansi", descriptionEnglish: "Post what you want to buy", descriptionAmharic: "መግዛት የሚፈልጉትን ይለጥፉ" },
 ];
+
+export function getRoleName(role: (typeof roleOptions)[number], language: Language) {
+  if (language === "om") return role.label;
+  if (language === "am") return role.amharic;
+  return role.english;
+}
+
+export function getRoleDescription(role: (typeof roleOptions)[number], language: Language) {
+  if (language === "om") return role.description;
+  if (language === "am") return role.descriptionAmharic;
+  return role.descriptionEnglish;
+}
 
 type RoleSelectorProps = {
   value: RoleId | null;
   onChange: (role: RoleId) => void;
+  language: Language;
 };
 
-export default function RoleSelector({ value, onChange }: RoleSelectorProps) {
+export default function RoleSelector({ value, onChange, language }: RoleSelectorProps) {
   return (
-    <div className="role-selector" role="radiogroup" aria-label="Select your marketplace role">
+    <div className="role-selector" role="radiogroup" aria-label={language === "om" ? "Gahee marketplace kee fili" : language === "am" ? "የገበያ ሚናዎን ይምረጡ" : "Select your marketplace role"}>
       {roleOptions.map((role) => (
         <button
           className={value === role.id ? "role-card selected" : "role-card"}
@@ -42,9 +60,9 @@ export default function RoleSelector({ value, onChange }: RoleSelectorProps) {
         >
           <span className="role-icon" aria-hidden="true">{role.icon}</span>
           <span className="role-copy">
-            <strong>{role.label}</strong>
-            <small>{role.english}</small>
-            <em>{role.description}</em>
+            <strong>{getRoleName(role, language)}</strong>
+            <small>{language === "en" ? role.label : role.english}</small>
+            <em>{getRoleDescription(role, language)}</em>
           </span>
           <span className="role-check" aria-hidden="true">✓</span>
         </button>

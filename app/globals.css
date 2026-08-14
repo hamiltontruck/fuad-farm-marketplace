@@ -60,6 +60,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .market-header > nav:not(.mobile-market-menu) a { transition: color .2s; }
 .market-header > nav:not(.mobile-market-menu) a:hover { color: var(--blue); }
 .market-actions { display: flex; align-items: center; gap: 9px; }
+.language-switcher { padding: 3px; display: inline-flex; align-items: center; gap: 2px; border: 1px solid #dfe5ed; border-radius: 11px; background: #f7f9fc; }
+.language-switcher button { min-width: 31px; height: 30px; padding: 0 6px; border: 0; border-radius: 8px; background: transparent; color: #607086; font-size: 8px; font-weight: 900; letter-spacing: .03em; cursor: pointer; transition: color .2s, background .2s, box-shadow .2s; }
+.language-switcher button:hover { color: var(--blue); }
+.language-switcher button.active { background: #fff; color: var(--blue); box-shadow: 0 2px 8px rgba(9,42,83,.12); }
 .notification-button { width: 39px; height: 39px; border: 1px solid var(--line); border-radius: 11px; background: #fff; cursor: pointer; position: relative; }
 .notification-button span { font-size: 16px; filter: grayscale(1); }
 .notification-button i { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #ef525f; right: 7px; top: 6px; box-shadow: 0 0 0 3px #fff; animation: notification-pulse 2.2s infinite; }
@@ -83,6 +87,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .mobile-market-menu { position: absolute; z-index: 60; left: 15px; right: 15px; top: calc(100% + 8px); padding: 10px; border: 1px solid var(--line); border-radius: 16px; background: #fff; box-shadow: 0 22px 55px rgba(7,26,53,.19); animation: fade-up .22s both; }
 .mobile-market-menu > a { min-height: 46px; padding: 0 12px; border-bottom: 1px solid #edf0f4; display: flex; align-items: center; justify-content: space-between; color: var(--navy); font-size: 11px; font-weight: 800; }
 .mobile-market-menu > a span { color: var(--blue); }
+.mobile-language-row { min-height: 50px; padding: 3px 8px 9px; border-bottom: 1px solid #edf0f4; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mobile-language-row > span { color: var(--muted); font-size: 9px; font-weight: 800; }
 .mobile-account-actions { padding: 10px 4px 3px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .mobile-account-actions > div { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .mobile-account-actions > div span { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: #eef4fb; }
@@ -450,6 +456,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 
 @media (max-width: 850px) {
+  .header-language-switcher { display: none; }
   .market-hero { grid-template-columns: 1fr; padding-bottom: 70px; }
   .hero-market-visual { width: min(500px,88vw); justify-self: center; }
   .market-category-grid { grid-template-columns: repeat(2,1fr); }
