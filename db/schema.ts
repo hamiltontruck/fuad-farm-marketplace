@@ -23,6 +23,7 @@ export const listings = sqliteTable("listings", {
   priceSuffix: text("price_suffix").notNull().default("total"),
   location: text("location").notNull(),
   seller: text("seller").notNull(),
+  phone: text("phone").notNull().default(""),
   role: text("role").notNull(),
   condition: text("condition").notNull(),
   description: text("description").notNull(),
