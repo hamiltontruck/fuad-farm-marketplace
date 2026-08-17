@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import ListingSync from "../components/marketplace/ListingSync";
+import MarketplaceControlBar from "../components/operations/MarketplaceControlBar";
 import "./globals.css";
+import "./operations.css";
 
 export const metadata: Metadata = {
   title: "FUAD ESMART Marketplace",
@@ -10,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="om"><body><ListingSync />{children}</body></html>;
+  return <html lang="om"><body><ListingSync />{children}<MarketplaceControlBar /></body></html>;
 }
