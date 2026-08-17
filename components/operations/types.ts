@@ -1,5 +1,8 @@
+export type ListingStatus = "active" | "pending" | "sold" | "hidden";
+
 export type DatabaseListing = {
-  id: number;
+  id: string;
+  ownerId: string;
   title: string;
   category: string;
   categoryLabel: string;
@@ -14,8 +17,7 @@ export type DatabaseListing = {
   description: string;
   icon: string;
   accent: string;
-  ownerEmail: string;
-  status: "active" | "sold" | "hidden";
+  status: ListingStatus;
   images: string[];
   verified: boolean;
   createdAt: string;
