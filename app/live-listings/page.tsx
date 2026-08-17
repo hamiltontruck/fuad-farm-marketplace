@@ -4,9 +4,9 @@ import PublicListingsPanel from "../../components/operations/PublicListingsPanel
 export default function LiveListingsPage() {
   return (
     <OperationsShell
-      eyebrow="LIVE D1 MARKETPLACE"
+      eyebrow="LIVE SUPABASE MARKETPLACE"
       title="Cloud listings"
-      description="Maxxansa fi suuraa database keessaa browser hundarra yeroo tokko keessatti ilaali."
+      description="Maxxansa fi suuraa Supabase keessaa browser hundarra yeroo tokko keessatti ilaali."
     >
       <PublicListingsPanel />
     </OperationsShell>

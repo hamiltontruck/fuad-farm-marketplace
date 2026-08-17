@@ -1,11 +1,16 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-
-type Props = { defaultSeller: string };
-
-type UploadResult = { url?: string; error?: string };
-type ListingResult = { listing?: { id: number | string; title: string }; error?: string };
+import {
+  createListing,
+  deleteListingImages,
+  getProfile,
+  getSession,
+  signOut,
+  uploadListingImage,
+  type SupabaseSession,
+} from "../../lib/supabase-browser";
+import SupabaseAuthCard from "./SupabaseAuthCard";
 
 const categories = [
   { id: "mineral", label: "Albuuda / Mineral", icon: "🪨", accent: "violet" },
@@ -19,15 +24,16 @@ const categories = [
   { id: "livestock", label: "Horii fi bu'aa horii", icon: "🐄", accent: "brown" },
 ];
 
-export default function DatabasePostForm({ defaultSeller }: Props) {
-  const [transaction, setTransaction] = useState("sell");
+export default function DatabasePostForm() {
+  const [session, setSession] = useState<SupabaseSession | null | undefined>(undefined);
+  const [transaction, setTransaction] = useState<"sell" | "buy" | "broker">("sell");
   const [category, setCategory] = useState("farm");
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [priceSuffix, setPriceSuffix] = useState("total");
   const [condition, setCondition] = useState("New");
   const [location, setLocation] = useState("");
-  const [seller, setSeller] = useState(defaultSeller);
+  const [seller, setSeller] = useState("");
   const [phone, setPhone] = useState("");
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -40,23 +46,36 @@ export default function DatabasePostForm({ defaultSeller }: Props) {
 
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
 
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const current = await getSession();
+      if (!active) return;
+      setSession(current);
+      if (!current) return;
+      try {
+        const profile = await getProfile(current);
+        if (!active) return;
+        setSeller(profile?.full_name || String(current.user.user_metadata?.full_name ?? current.user.email ?? ""));
+        setPhone(profile?.phone ?? "");
+      } catch {
+        setSeller(String(current.user.user_metadata?.full_name ?? current.user.email ?? ""));
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
   function choosePhotos(event: ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(event.target.files ?? []).slice(0, 5);
     setFiles(selected);
-    setError(selected.some((file) => file.size > 5 * 1024 * 1024) ? "Suuraan tokko 5 MB caaluu hin qabu." : "");
-  }
-
-  async function uploadPhoto(file: File): Promise<string> {
-    const form = new FormData();
-    form.append("file", file);
-    const response = await fetch("/api/uploads", { method: "POST", body: form });
-    const payload = (await response.json()) as UploadResult;
-    if (!response.ok || !payload.url) throw new Error(payload.error ?? "Photo upload failed.");
-    return payload.url;
+    const invalidType = selected.some((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type));
+    const tooLarge = selected.some((file) => file.size > 5 * 1024 * 1024);
+    setError(invalidType ? "JPG, PNG ykn WebP qofa filadhu." : tooLarge ? "Suuraan tokko 5 MB caaluu hin qabu." : "");
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!session) return;
     if (files.length < 1 || files.length > 5) {
       setError("Suuraa 1 hanga 5 filadhu.");
       return;
@@ -69,54 +88,59 @@ export default function DatabasePostForm({ defaultSeller }: Props) {
     setBusy(true);
     setError("");
     setSuccess("");
+    const uploadedUrls: string[] = [];
     try {
-      const images: string[] = [];
-      for (const file of files) images.push(await uploadPhoto(file));
+      for (const file of files) {
+        const uploaded = await uploadListingImage(session, file);
+        uploadedUrls.push(uploaded.url);
+      }
 
-      const response = await fetch("/api/listings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          category,
-          categoryLabel: selectedCategory.label,
-          transaction,
-          price: Number(price),
-          priceSuffix,
-          location,
-          seller,
-          phone,
-          role: transaction === "broker" ? "Broker" : transaction === "buy" ? "Buyer" : "Seller",
-          condition,
-          description,
-          icon: selectedCategory.icon,
-          accent: selectedCategory.accent,
-          images,
-        }),
+      const listing = await createListing(session, {
+        title: title.trim(),
+        category,
+        category_label: selectedCategory.label,
+        transaction,
+        price: Number(price),
+        price_suffix: priceSuffix,
+        location: location.trim(),
+        seller_name: seller.trim(),
+        phone: phone.trim(),
+        role_label: transaction === "broker" ? "Broker" : transaction === "buy" ? "Buyer" : "Seller",
+        condition,
+        description: description.trim(),
+        image_urls: uploadedUrls,
       });
-      const payload = (await response.json()) as ListingResult;
-      if (!response.ok || !payload.listing) throw new Error(payload.error ?? "Maxxansa kuusuu hin dandeenye.");
 
-      setSuccess(`Maxxansi #${payload.listing.id} database fi photo storage keessatti kuufameera.`);
+      setSuccess(`Maxxansi ${listing.title} Supabase database fi listing-images storage keessatti kuufameera.`);
       setTitle("");
       setPrice("");
       setLocation("");
-      setPhone("");
       setDescription("");
       setFiles([]);
     } catch (caught) {
+      if (uploadedUrls.length) {
+        try { await deleteListingImages(session, uploadedUrls); } catch { /* best-effort rollback */ }
+      }
       setError(caught instanceof Error ? caught.message : "Maxxansi hin milkoofne.");
     } finally {
       setBusy(false);
     }
   }
 
+  if (session === undefined) return <section className="ops-card"><p>Supabase account ilaalaa jira…</p></section>;
+  if (!session) return <SupabaseAuthCard title="Maxxansa baasuuf FUAD account seeni" />;
+
   return (
     <form className="ops-card" onSubmit={submit}>
-      <div className="ops-note">Account kee ChatGPT identity waliin walqabatee jira. Maxxansi kun browser hundarra mul'ata; suuraan R2 keessatti, odeeffannoon D1 keessatti kuufama.</div>
+      <div className="ops-note">
+        Account: <strong>{session.user.email}</strong>. Maxxansi Supabase database keessatti, suuraan <strong>listing-images</strong> Storage keessatti kuufama; browser hundarra mul'ata.
+      </div>
+      <div className="ops-actions" style={{ marginTop: 12 }}>
+        <button className="ops-button secondary" type="button" onClick={() => void signOut().then(() => window.location.reload())}>Logout</button>
+      </div>
       <div className="ops-grid" style={{ marginTop: 18 }}>
         <label className="ops-field">Gosa daldalaa
-          <select value={transaction} onChange={(event) => setTransaction(event.target.value)}>
+          <select value={transaction} onChange={(event) => setTransaction(event.target.value as "sell" | "buy" | "broker")}>
             <option value="sell">Gurgurtaa</option><option value="buy">Barbaacha bitataa</option><option value="broker">Broker</option>
           </select>
         </label>
@@ -124,7 +148,7 @@ export default function DatabasePostForm({ defaultSeller }: Props) {
           <select value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option value={item.id} key={item.id}>{item.icon} {item.label}</option>)}</select>
         </label>
         <label className="ops-field ops-span-2">Mata-duree
-          <input value={title} onChange={(event) => setTitle(event.target.value)} minLength={4} maxLength={80} required placeholder="Fkn: Sibiila 12mm gurgurama" />
+          <input value={title} onChange={(event) => setTitle(event.target.value)} minLength={4} maxLength={120} required placeholder="Fkn: Sibiila 12mm gurgurama" />
         </label>
         <label className="ops-field">Gatii ETB
           <input type="number" min="0" value={price} onChange={(event) => setPrice(event.target.value)} required />
@@ -153,8 +177,8 @@ export default function DatabasePostForm({ defaultSeller }: Props) {
         </label>
       </div>
       {error && <p className="ops-alert" role="alert">{error}</p>}
-      {success && <p className="ops-success">{success} <a href="/my-listings">Maxxansa koo ilaali →</a></p>}
-      <div className="ops-actions"><button className="ops-button" type="submit" disabled={busy}>{busy ? "Suuraa fi maxxansa kuusaa jira…" : "Database keessatti maxxansi"}</button></div>
+      {success && <p className="ops-success">{success} <a href="/live-listings">Live marketplace ilaali →</a></p>}
+      <div className="ops-actions"><button className="ops-button" type="submit" disabled={busy}>{busy ? "Suuraa fi maxxansa kuusaa jira…" : "Supabase keessatti maxxansi"}</button></div>
     </form>
   );
 }
