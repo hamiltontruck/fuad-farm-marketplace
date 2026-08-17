@@ -26,18 +26,19 @@ export async function POST(request: Request) {
     const priceSuffix = String(payload.priceSuffix ?? "total").trim();
     const location = String(payload.location ?? "").trim();
     const seller = String(payload.seller ?? "").trim();
+    const phone = String(payload.phone ?? "").trim();
     const role = String(payload.role ?? "").trim();
     const condition = String(payload.condition ?? "").trim();
     const description = String(payload.description ?? "").trim();
     const icon = String(payload.icon ?? "📦").trim();
     const accent = String(payload.accent ?? "blue").trim();
 
-    if (title.length < 4 || !allowedCategories.has(category) || !allowedTransactions.has(transaction) || !Number.isFinite(price) || price < 0 || !location || seller.length < 2 || description.length < 12) {
+    if (title.length < 4 || !allowedCategories.has(category) || !allowedTransactions.has(transaction) || !Number.isFinite(price) || price < 0 || !location || seller.length < 2 || phone.length < 9 || description.length < 12) {
       return Response.json({ error: "Listing information is incomplete or invalid." }, { status: 400 });
     }
 
     const db = await getDb();
-    const [listing] = await db.insert(listings).values({ title, category, categoryLabel, transaction, price, priceSuffix, location, seller, role, condition, description, icon, accent }).returning();
+    const [listing] = await db.insert(listings).values({ title, category, categoryLabel, transaction, price, priceSuffix, location, seller, phone, role, condition, description, icon, accent }).returning();
     return Response.json({ listing }, { status: 201 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Could not publish listing." }, { status: 500 });
