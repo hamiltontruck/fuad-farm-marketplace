@@ -29,6 +29,9 @@ export const listings = sqliteTable("listings", {
   description: text("description").notNull(),
   icon: text("icon").notNull(),
   accent: text("accent").notNull(),
+  ownerEmail: text("owner_email").notNull().default(""),
+  status: text("status").notNull().default("active"),
+  images: text("images").notNull().default("[]"),
   verified: integer("verified", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
