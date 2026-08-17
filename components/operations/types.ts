@@ -1,0 +1,22 @@
+export type DatabaseListing = {
+  id: number;
+  title: string;
+  category: string;
+  categoryLabel: string;
+  transaction: string;
+  price: number;
+  priceSuffix: string;
+  location: string;
+  seller: string;
+  phone: string;
+  role: string;
+  condition: string;
+  description: string;
+  icon: string;
+  accent: string;
+  ownerEmail: string;
+  status: "active" | "sold" | "hidden";
+  images: string[];
+  verified: boolean;
+  createdAt: string;
+};
