@@ -2,22 +2,26 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { listings } from "../../../../db/schema";
 import { getChatGPTUser } from "../../../chatgpt-auth";
-import { isListingStatus, parseImageUrls, serializeListing } from "../../../listing-data";
+import { isListingStatus, parseImageUrls, serializeListing, type ListingStatus } from "../../../listing-data";
 import { getMediaBucket, isConfiguredAdmin } from "../../../runtime-storage";
 
 type RouteContext = { params: Promise<{ id: string }> };
+type Database = Awaited<ReturnType<typeof getDb>>;
+type ListingRow = typeof listings.$inferSelect;
+type AuthorizedListing = { db: Database; listing: ListingRow; admin: boolean };
+type ListingUpdates = { status?: ListingStatus; title?: string; price?: number; description?: string };
 
-async function loadAuthorizedListing(id: number) {
+async function loadAuthorizedListing(id: number): Promise<AuthorizedListing | Response> {
   const user = await getChatGPTUser();
-  if (!user) return { error: Response.json({ error: "Sign in with ChatGPT is required." }, { status: 401 }) };
+  if (!user) return Response.json({ error: "Sign in with ChatGPT is required." }, { status: 401 });
 
   const db = await getDb();
   const [listing] = await db.select().from(listings).where(eq(listings.id, id)).limit(1);
-  if (!listing) return { error: Response.json({ error: "Listing not found." }, { status: 404 }) };
+  if (!listing) return Response.json({ error: "Listing not found." }, { status: 404 });
 
   const admin = await isConfiguredAdmin(user.email);
   const owner = Boolean(listing.ownerEmail) && listing.ownerEmail.toLowerCase() === user.email.toLowerCase();
-  if (!admin && !owner) return { error: Response.json({ error: "You cannot manage this listing." }, { status: 403 }) };
+  if (!admin && !owner) return Response.json({ error: "You cannot manage this listing." }, { status: 403 });
 
   return { db, listing, admin };
 }
@@ -28,10 +32,10 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!Number.isInteger(id) || id < 1) return Response.json({ error: "Invalid listing ID." }, { status: 400 });
 
     const authorized = await loadAuthorizedListing(id);
-    if ("error" in authorized) return authorized.error;
+    if (authorized instanceof Response) return authorized;
 
     const payload = (await request.json()) as Record<string, unknown>;
-    const updates: Partial<typeof listings.$inferInsert> = {};
+    const updates: ListingUpdates = {};
 
     if (payload.status !== undefined) {
       if (!isListingStatus(payload.status)) return Response.json({ error: "Invalid listing status." }, { status: 400 });
@@ -72,7 +76,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
     if (!Number.isInteger(id) || id < 1) return Response.json({ error: "Invalid listing ID." }, { status: 400 });
 
     const authorized = await loadAuthorizedListing(id);
-    if ("error" in authorized) return authorized.error;
+    if (authorized instanceof Response) return authorized;
 
     await authorized.db.delete(listings).where(eq(listings.id, id));
 
