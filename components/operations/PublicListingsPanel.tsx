@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { fetchPublicListings } from "../../lib/supabase-browser";
 import type { DatabaseListing } from "./types";
-
-type Feed = { listings?: DatabaseListing[]; error?: string };
 
 export default function PublicListingsPanel() {
   const [listings, setListings] = useState<DatabaseListing[]>([]);
@@ -15,10 +14,7 @@ export default function PublicListingsPanel() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/listings", { cache: "no-store" });
-      const payload = (await response.json()) as Feed;
-      if (!response.ok) throw new Error(payload.error ?? "Listings load failed.");
-      setListings(payload.listings ?? []);
+      setListings(await fetchPublicListings());
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Listings load failed.");
     } finally {
@@ -38,12 +34,14 @@ export default function PublicListingsPanel() {
 
   return (
     <section className="ops-card">
-      <div className="ops-grid" style={{ marginBottom: 18 }}>
+      <div className="ops-note">Maxxansi kun Supabase database irraa kallattiin dhufa; Chrome, Firefox, Safari, mobile fi computer irratti data tokko mul'ata.</div>
+      <div className="ops-grid" style={{ marginTop: 18, marginBottom: 18 }}>
         <label className="ops-field ops-span-2">Marketplace search
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Meeshaa, category, seller ykn location barbaadi…" />
         </label>
       </div>
-      {loading && <p>Cloud database keessaa maxxansa fidaa jira…</p>}
+      <div className="ops-actions"><button className="ops-button secondary" type="button" onClick={() => void load()} disabled={loading}>Refresh Supabase</button></div>
+      {loading && <p>Supabase keessaa maxxansa fidaa jira…</p>}
       {error && <p className="ops-alert" role="alert">{error}</p>}
       <div className="ops-list">
         {visible.map((listing) => (
