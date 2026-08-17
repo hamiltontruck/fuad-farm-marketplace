@@ -1,0 +1,187 @@
+name: Apply listing API patch
+
+on:
+  push:
+    branches:
+      - agent/connect-listing-api
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/connect-listing-api
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: npm
+
+      - name: Connect listing UI to D1 API
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise SystemExit(f"Missing patch target: {label}")
+              return text.replace(old, new, 1)
+
+          post_path = Path("components/marketplace/PostAdFlow.tsx")
+          post = post_path.read_text()
+
+          post = replace_once(
+              post,
+              'localTitle: "Maxxansi device kana irratti kuufama.", localBody: "Database project keessaa yeroo biraa wal qunnamsiifna.",',
+              'localTitle: "Maxxansi database marketplace keessatti kuufama.", localBody: "Device biraa irraa illee maxxansi kun ni mul’ata.",',
+              "Oromo database copy",
+          )
+          post = replace_once(
+              post,
+              'localTitle: "This listing is saved on this device.", localBody: "We will connect the project database later.",',
+              'localTitle: "This listing is saved to the marketplace database.", localBody: "It can be loaded again from another device.",',
+              "English database copy",
+          )
+          post = replace_once(
+              post,
+              'localTitle: "ማስታወቂያው በዚህ መሣሪያ ላይ ይቀመጣል።", localBody: "የፕሮጀክቱን ዳታቤዝ በኋላ እናገናኛለን።",',
+              'localTitle: "ማስታወቂያው በገበያው ዳታቤዝ ውስጥ ይቀመጣል።", localBody: "ከሌላ መሣሪያም እንደገና ሊታይ ይችላል።",',
+              "Amharic database copy",
+          )
+
+          old_publish = '''      await new Promise((resolve) => window.setTimeout(resolve, 550));
+              onComplete({ ...draft, id: `local-${Date.now()}`, time: t.justNow, verified: false });
+              setStep(3);'''
+          new_publish = '''      const response = await fetch("/api/listings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(draft),
+              });
+              const payload = (await response.json()) as {
+                listing?: Omit<Listing, "id" | "time"> & { id: number | string; verified?: boolean };
+                error?: string;
+              };
+              if (!response.ok || !payload.listing) {
+                throw new Error(payload.error || t.failed);
+              }
+              onComplete({
+                ...draft,
+                ...payload.listing,
+                id: String(payload.listing.id),
+                time: t.justNow,
+                verified: Boolean(payload.listing.verified),
+              });
+              setStep(3);'''
+          post = replace_once(post, old_publish, new_publish, "listing API publish")
+          post_path.write_text(post)
+
+          page_path = Path("app/page.tsx")
+          page = page_path.read_text()
+          page = replace_once(
+              page,
+              'listingAdded: "Maxxansi kee marketplace irratti baheera — device kana irratti kuufame.",',
+              'listingAdded: "Maxxansi kee marketplace irratti baheera — database keessatti kuufame.",',
+              "Oromo listing notice",
+          )
+          page = replace_once(
+              page,
+              'listingAdded: "Your listing is live and saved on this device.",',
+              'listingAdded: "Your listing is live and saved to the marketplace database.",',
+              "English listing notice",
+          )
+          page = replace_once(
+              page,
+              'listingAdded: "ማስታወቂያዎ ወጥቶ በዚህ መሣሪያ ላይ ተቀምጧል።",',
+              'listingAdded: "ማስታወቂያዎ ወጥቶ በገበያው ዳታቤዝ ውስጥ ተቀምጧል።",',
+              "Amharic listing notice",
+          )
+
+          effect_anchor = '''  }, []);
+
+          useEffect(() => {
+            if (!languageReady) return;'''
+          remote_effect = '''  }, []);
+
+          useEffect(() => {
+            let active = true;
+
+            async function loadRemoteListings() {
+              try {
+                const response = await fetch("/api/listings", { headers: { Accept: "application/json" } });
+                if (!response.ok) return;
+                const payload = (await response.json()) as { listings?: unknown };
+                if (!Array.isArray(payload.listings)) return;
+
+                const normalized = payload.listings.flatMap((row): Listing[] => {
+                  if (!row || typeof row !== "object") return [];
+                  const item = row as Record<string, unknown>;
+                  const trade = String(item.transaction ?? "");
+                  if (trade !== "sell" && trade !== "buy" && trade !== "broker") return [];
+                  const createdAt = String(item.createdAt ?? "");
+                  const parsedDate = createdAt ? new Date(`${createdAt.replace(" ", "T")}Z`) : null;
+                  const time = parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate.toLocaleDateString() : "Recent";
+
+                  return [{
+                    id: String(item.id ?? ""),
+                    title: String(item.title ?? ""),
+                    category: String(item.category ?? ""),
+                    categoryLabel: String(item.categoryLabel ?? ""),
+                    transaction: trade,
+                    price: Number(item.price ?? 0),
+                    priceSuffix: String(item.priceSuffix ?? "total"),
+                    location: String(item.location ?? ""),
+                    seller: String(item.seller ?? ""),
+                    phone: String(item.phone ?? ""),
+                    role: String(item.role ?? ""),
+                    condition: String(item.condition ?? ""),
+                    description: String(item.description ?? ""),
+                    icon: String(item.icon ?? "📦"),
+                    accent: String(item.accent ?? "blue"),
+                    time,
+                    verified: Boolean(item.verified),
+                    sample: false,
+                  }];
+                });
+
+                if (!active || normalized.length === 0) return;
+                setUserListings(normalized);
+                window.localStorage.setItem(LOCAL_LISTINGS_KEY, JSON.stringify(normalized));
+              } catch {
+                // Keep the local cache as an offline fallback.
+              }
+            }
+
+            void loadRemoteListings();
+            return () => {
+              active = false;
+            };
+          }, []);
+
+          useEffect(() => {
+            if (!languageReady) return;'''
+          page = replace_once(page, effect_anchor, remote_effect, "remote listing loader")
+          page_path.write_text(page)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Commit verified patch
+        shell: bash
+        run: |
+          rm .github/workflows/apply-listing-api-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/page.tsx components/marketplace/PostAdFlow.tsx .github/workflows/apply-listing-api-patch.yml
+          git commit -m "Connect marketplace listings to D1 API"
+          git push origin agent/connect-listing-api
