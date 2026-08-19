@@ -9,7 +9,8 @@ type Language = "om" | "en" | "am";
 type Market = {
   id: string;
   name: string;
-  flag: string;
+  flag?: string;
+  iso2: string;
 };
 
 const STORAGE_KEY = "fuad-market-country-v1";
@@ -17,30 +18,30 @@ const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://gdckzjtne
 const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "sb_publishable_jw5M6GAGQCFawBYabP8SIw_aawQM49_";
 
 const fallbackMarkets: Market[] = [
-  { id: "all-africa", name: "All Africa", flag: "🌍" },
-  { id: "egypt", name: "Egypt", flag: "🇪🇬" },
-  { id: "morocco", name: "Morocco", flag: "🇲🇦" },
-  { id: "sudan", name: "Sudan", flag: "🇸🇩" },
-  { id: "south-sudan", name: "South Sudan", flag: "🇸🇸" },
-  { id: "ethiopia", name: "Ethiopia", flag: "🇪🇹" },
-  { id: "kenya", name: "Kenya", flag: "🇰🇪" },
-  { id: "tanzania", name: "Tanzania", flag: "🇹🇿" },
-  { id: "uganda", name: "Uganda", flag: "🇺🇬" },
-  { id: "rwanda", name: "Rwanda", flag: "🇷🇼" },
-  { id: "burundi", name: "Burundi", flag: "🇧🇮" },
-  { id: "dr-congo", name: "DR Congo", flag: "🇨🇩" },
-  { id: "angola", name: "Angola", flag: "🇦🇴" },
-  { id: "malawi", name: "Malawi", flag: "🇲🇼" },
-  { id: "zambia", name: "Zambia", flag: "🇿🇲" },
-  { id: "zimbabwe", name: "Zimbabwe", flag: "🇿🇼" },
-  { id: "botswana", name: "Botswana", flag: "🇧🇼" },
-  { id: "namibia", name: "Namibia", flag: "🇳🇦" },
-  { id: "eswatini", name: "Eswatini", flag: "🇸🇿" },
-  { id: "south-africa", name: "South Africa", flag: "🇿🇦" },
-  { id: "nigeria", name: "Nigeria", flag: "🇳🇬" },
-  { id: "ghana", name: "Ghana", flag: "🇬🇭" },
-  { id: "cote-divoire", name: "Côte d’Ivoire", flag: "🇨🇮" },
-  { id: "senegal", name: "Senegal", flag: "🇸🇳" },
+  { id: "all-africa", name: "All Africa", iso2: "AF" },
+  { id: "egypt", name: "Egypt", iso2: "EG" },
+  { id: "morocco", name: "Morocco", iso2: "MA" },
+  { id: "sudan", name: "Sudan", iso2: "SD" },
+  { id: "south-sudan", name: "South Sudan", iso2: "SS" },
+  { id: "ethiopia", name: "Ethiopia", iso2: "ET" },
+  { id: "kenya", name: "Kenya", iso2: "KE" },
+  { id: "tanzania", name: "Tanzania", iso2: "TZ" },
+  { id: "uganda", name: "Uganda", iso2: "UG" },
+  { id: "rwanda", name: "Rwanda", iso2: "RW" },
+  { id: "burundi", name: "Burundi", iso2: "BI" },
+  { id: "dr-congo", name: "DR Congo", iso2: "CD" },
+  { id: "angola", name: "Angola", iso2: "AO" },
+  { id: "malawi", name: "Malawi", iso2: "MW" },
+  { id: "zambia", name: "Zambia", iso2: "ZM" },
+  { id: "zimbabwe", name: "Zimbabwe", iso2: "ZW" },
+  { id: "botswana", name: "Botswana", iso2: "BW" },
+  { id: "namibia", name: "Namibia", iso2: "NA" },
+  { id: "eswatini", name: "Eswatini", iso2: "SZ" },
+  { id: "south-africa", name: "South Africa", iso2: "ZA" },
+  { id: "nigeria", name: "Nigeria", iso2: "NG" },
+  { id: "ghana", name: "Ghana", iso2: "GH" },
+  { id: "cote-divoire", name: "Côte d’Ivoire", iso2: "CI" },
+  { id: "senegal", name: "Senegal", iso2: "SN" },
 ];
 
 const copy: Record<Language, { title: string; intro: string; allAfrica: string }> = {
@@ -68,7 +69,7 @@ function currentLanguage(): Language {
 
 async function fetchMarkets(signal: AbortSignal): Promise<Market[]> {
   const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/markets?select=id,name,flag&is_active=eq.true&order=sort_order.asc`,
+    `${SUPABASE_URL}/rest/v1/markets?select=id,name,flag,iso2&is_active=eq.true&order=sort_order.asc`,
     {
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
@@ -81,7 +82,29 @@ async function fetchMarkets(signal: AbortSignal): Promise<Market[]> {
 
   if (!response.ok) throw new Error(`Markets request failed (${response.status}).`);
   const rows = await response.json() as Market[];
-  return rows.filter((market) => market.id && market.name && market.flag);
+  return rows.filter((market) => market.id && market.name && market.iso2);
+}
+
+function MarketSymbol({ market }: { market: Market }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const code = market.iso2.toUpperCase();
+
+  if (market.id === "all-africa" || imageFailed) {
+    return <span className={styles.symbolFallback} aria-hidden="true">{code}</span>;
+  }
+
+  return (
+    <span className={styles.symbolFrame} aria-hidden="true">
+      <img
+        className={styles.flagImage}
+        src={`https://flagcdn.com/40x30/${code.toLowerCase()}.png`}
+        alt=""
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setImageFailed(true)}
+      />
+    </span>
+  );
 }
 
 export default function CountryMarkets() {
@@ -117,7 +140,7 @@ export default function CountryMarkets() {
         }
       })
       .catch(() => {
-        // Keep the built-in list available when the network is temporarily unavailable.
+        // Keep the built-in market list available when Supabase or the network is unavailable.
       });
 
     const observer = new MutationObserver(() => setLanguage(currentLanguage()));
@@ -157,7 +180,7 @@ export default function CountryMarkets() {
               aria-pressed={isActive}
               onClick={() => chooseMarket(market)}
             >
-              <span aria-hidden="true">{market.flag}</span>
+              <MarketSymbol market={market} />
               <strong>{label}</strong>
             </button>
           );
