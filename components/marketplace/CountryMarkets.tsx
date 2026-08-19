@@ -13,8 +13,10 @@ type Market = {
 };
 
 const STORAGE_KEY = "fuad-market-country-v1";
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://gdckzjtneidkngfjfjlx.supabase.co").replace(/\/$/, "");
+const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "sb_publishable_jw5M6GAGQCFawBYabP8SIw_aawQM49_";
 
-const markets: Market[] = [
+const fallbackMarkets: Market[] = [
   { id: "all-africa", name: "All Africa", flag: "🌍" },
   { id: "egypt", name: "Egypt", flag: "🇪🇬" },
   { id: "morocco", name: "Morocco", flag: "🇲🇦" },
@@ -64,10 +66,29 @@ function currentLanguage(): Language {
   return value === "en" || value === "am" ? value : "om";
 }
 
+async function fetchMarkets(signal: AbortSignal): Promise<Market[]> {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/markets?select=id,name,flag&is_active=eq.true&order=sort_order.asc`,
+    {
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      cache: "no-store",
+      signal,
+    },
+  );
+
+  if (!response.ok) throw new Error(`Markets request failed (${response.status}).`);
+  const rows = await response.json() as Market[];
+  return rows.filter((market) => market.id && market.name && market.flag);
+}
+
 export default function CountryMarkets() {
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [language, setLanguage] = useState<Language>("om");
   const [selected, setSelected] = useState("all-africa");
+  const [markets, setMarkets] = useState<Market[]>(fallbackMarkets);
 
   useEffect(() => {
     const footer = document.querySelector<HTMLElement>(".market-footer");
@@ -82,12 +103,28 @@ export default function CountryMarkets() {
 
     setLanguage(currentLanguage());
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored && markets.some((market) => market.id === stored)) setSelected(stored);
+    if (stored && fallbackMarkets.some((market) => market.id === stored)) setSelected(stored);
+
+    const controller = new AbortController();
+    void fetchMarkets(controller.signal)
+      .then((rows) => {
+        if (!rows.length) return;
+        setMarkets(rows);
+        const current = window.localStorage.getItem(STORAGE_KEY) ?? "all-africa";
+        if (!rows.some((market) => market.id === current)) {
+          window.localStorage.setItem(STORAGE_KEY, "all-africa");
+          setSelected("all-africa");
+        }
+      })
+      .catch(() => {
+        // Keep the built-in list available when the network is temporarily unavailable.
+      });
 
     const observer = new MutationObserver(() => setLanguage(currentLanguage()));
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
 
     return () => {
+      controller.abort();
       observer.disconnect();
       portalHost.remove();
     };
