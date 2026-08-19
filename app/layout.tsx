@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import CountryMarkets from "../components/marketplace/CountryMarkets";
 import ListingSync from "../components/marketplace/ListingSync";
+import MarketCountryBridge from "../components/marketplace/MarketCountryBridge";
 import MarketplaceControlBar from "../components/operations/MarketplaceControlBar";
 import "./globals.css";
 import "./operations.css";
@@ -13,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="om"><body><ListingSync />{children}<CountryMarkets /><MarketplaceControlBar /></body></html>;
+  return <html lang="om"><body><MarketCountryBridge /><ListingSync />{children}<CountryMarkets /><MarketplaceControlBar /></body></html>;
 }
