@@ -5,6 +5,7 @@ import ListingSync from "../components/marketplace/ListingSync";
 import MarketCountryBridge from "../components/marketplace/MarketCountryBridge";
 import MarketplaceControlBar from "../components/operations/MarketplaceControlBar";
 import "./globals.css";
+import "./logo.css";
 import "./operations.css";
 
 export const metadata: Metadata = {

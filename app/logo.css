@@ -1,0 +1,33 @@
+/* FUAD ESMART brand mark: reuse the production favicon as the visible logo. */
+.esmart-mark {
+  background: #071a35 url("/favicon.svg") center / cover no-repeat !important;
+  color: transparent !important;
+  text-indent: -9999px;
+  overflow: hidden;
+  transform: none !important;
+  border: 1px solid rgba(7, 26, 53, 0.1);
+  box-shadow: 0 9px 22px rgba(7, 26, 53, 0.2) !important;
+}
+
+.esmart-brand:hover .esmart-mark,
+.footer-brand-wide:hover .esmart-mark {
+  transform: translateY(-1px) scale(1.03) !important;
+  box-shadow: 0 12px 27px rgba(7, 26, 53, 0.25) !important;
+}
+
+.core-logo {
+  background: #071a35 url("/favicon.svg") center / cover no-repeat !important;
+  color: transparent !important;
+  text-indent: -9999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.26);
+}
+
+@media (max-width: 540px) {
+  .esmart-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+  }
+}
