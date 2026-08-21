@@ -3,6 +3,7 @@ import CountryMarkets from "../components/marketplace/CountryMarkets";
 import DeploymentBadge from "../components/marketplace/DeploymentBadge";
 import ListingSync from "../components/marketplace/ListingSync";
 import MarketCountryBridge from "../components/marketplace/MarketCountryBridge";
+import AuthConfirmationNotice from "../components/operations/AuthConfirmationNotice";
 import MarketplaceControlBar from "../components/operations/MarketplaceControlBar";
 import "./globals.css";
 import "./logo.css";
@@ -16,5 +17,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="om"><body><DeploymentBadge /><MarketCountryBridge /><ListingSync />{children}<CountryMarkets /><MarketplaceControlBar /></body></html>;
+  return <html lang="om"><body><AuthConfirmationNotice /><DeploymentBadge /><MarketCountryBridge /><ListingSync />{children}<CountryMarkets /><MarketplaceControlBar /></body></html>;
 }
