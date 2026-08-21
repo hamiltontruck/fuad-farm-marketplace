@@ -19,10 +19,12 @@ export default function MyListingsPanel() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async (currentSession?: SupabaseSession | null) => {
     setLoading(true);
     setError("");
+    setNotice("");
     try {
       const activeSession = currentSession === undefined ? await getSession() : currentSession;
       setSession(activeSession);
@@ -44,9 +46,11 @@ export default function MyListingsPanel() {
     if (!session) return;
     setBusyId(id);
     setError("");
+    setNotice("");
     try {
       const listing = await updateListing(session, id, { status });
       setListings((current) => current.map((item) => item.id === id ? listing : item));
+      setNotice(status === "sold" ? "Post sold jedhamee mallatteeffameera." : "Post active deebi'eera.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Status jijjiiruu hin dandeenye.");
     } finally {
@@ -55,15 +59,21 @@ export default function MyListingsPanel() {
   }
 
   async function remove(listing: DatabaseListing) {
-    if (!session || !window.confirm("Maxxansa kana guutummaatti haquu?")) return;
+    if (!session || !window.confirm("Post kana guutummaatti haquu? Suuraawwan isaa illee ni haqamu.")) return;
     setBusyId(listing.id);
     setError("");
+    setNotice("");
     try {
       await deleteListing(session, listing.id);
-      try { await deleteListingImages(session, listing.images); } catch { /* database delete already succeeded */ }
+      try {
+        await deleteListingImages(session, listing.images);
+      } catch {
+        // The database row is already deleted. A storage cleanup failure must not restore the post.
+      }
       setListings((current) => current.filter((item) => item.id !== listing.id));
+      setNotice("Post kee milkaa'inaan haqameera.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Maxxansa haquu hin dandeenye.");
+      setError(caught instanceof Error ? caught.message : "Post haquu hin dandeenye.");
     } finally {
       setBusyId(null);
     }
@@ -81,6 +91,7 @@ export default function MyListingsPanel() {
         <button className="ops-button secondary" type="button" onClick={() => void signOut().then(() => { setSession(null); setListings([]); })}>Logout</button>
       </div>
       {loading && <p>Supabase keessaa maxxansa kee fidaa jira…</p>}
+      {notice && <p className="ops-note" role="status">{notice}</p>}
       {error && <p className="ops-alert" role="alert">{error}</p>}
       {!loading && !error && listings.length === 0 && <div className="ops-note">Account kanaan maxxansi Supabase keessatti hin jiru.</div>}
       <div className="ops-list">
@@ -95,7 +106,15 @@ export default function MyListingsPanel() {
               <div className="ops-actions">
                 {listing.status !== "sold" && <button className="ops-button warning" type="button" onClick={() => void setStatus(listing.id, "sold")} disabled={busyId === listing.id}>Sold godhi</button>}
                 {listing.status !== "active" && listing.status !== "hidden" && <button className="ops-button" type="button" onClick={() => void setStatus(listing.id, "active")} disabled={busyId === listing.id}>Active deebisi</button>}
-                <button className="ops-button danger" type="button" onClick={() => void remove(listing)} disabled={busyId === listing.id}>Delete</button>
+                <button
+                  className="ops-button danger"
+                  type="button"
+                  onClick={() => void remove(listing)}
+                  disabled={busyId === listing.id}
+                  aria-busy={busyId === listing.id}
+                >
+                  {busyId === listing.id ? "Haqaa jira…" : "Post haqi"}
+                </button>
               </div>
             </div>
           </article>
