@@ -38,6 +38,7 @@ test("renders development preview metadata", async () => {
 test("renders new production operation routes", async () => {
   const worker = await loadWorker("operation-routes");
   const routes = [
+    ["/admin", "Marketplace moderation"],
     ["/saved", "Saved marketplace posts"],
     ["/broker-dashboard", "Broker operations dashboard"],
     ["/notifications", "Account notifications"],
