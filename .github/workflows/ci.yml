@@ -23,7 +23,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Lint changed production modules
-        run: npx eslint components/operations/MyListingsPanel.tsx lib/supabase-browser.ts
+        run: |
+          npx eslint \
+            app/layout.tsx \
+            app/saved/page.tsx \
+            app/broker-dashboard/page.tsx \
+            app/notifications/page.tsx \
+            components/operations/AdminPanel.tsx \
+            components/operations/BrokerDashboardPanel.tsx \
+            components/operations/MarketplaceControlBar.tsx \
+            components/operations/MyListingsPanel.tsx \
+            components/operations/NotificationsPanel.tsx \
+            components/operations/PublicListingsPanel.tsx \
+            components/operations/SavedListingsPanel.tsx \
+            lib/supabase-browser.ts
       - name: Build and validate artifact
         run: npm run build
       - name: Rendered HTML regression test
