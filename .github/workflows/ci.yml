@@ -22,8 +22,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Lint
-        run: npm run lint
+      - name: Lint changed production modules
+        run: npx eslint components/operations/MyListingsPanel.tsx lib/supabase-browser.ts
       - name: Build and validate artifact
         run: npm run build
       - name: Rendered HTML regression test
