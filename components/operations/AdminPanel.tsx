@@ -194,7 +194,7 @@ export default function AdminPanel() {
         <div className="ops-note">Account seene: <strong>{session.user.email ?? session.user.id}</strong></div>
         <div className="ops-actions">
           <button className="ops-button" type="button" onClick={() => void switchAccount()}>Admin account biraa seeni</button>
-          <a className="ops-button secondary" href="/customer-dashboard">Customer dashboard deebi'i</a>
+          <a className="ops-button secondary" href="/customer-dashboard">Customer dashboard deebi’i</a>
         </div>
       </section>
     );
@@ -207,7 +207,7 @@ export default function AdminPanel() {
         <h2>Admin access check hin xumuramne</h2>
         <p className="ops-alert" role="alert">{error || "Supabase admin access check failed."}</p>
         <div className="ops-actions">
-          <button className="ops-button" type="button" onClick={() => void load(session)} disabled={loading}>Irra deebi'i</button>
+          <button className="ops-button" type="button" onClick={() => void load(session)} disabled={loading}>Irra deebi’i</button>
           <button className="ops-button secondary" type="button" onClick={() => void switchAccount()}>Account jijjiiri</button>
         </div>
       </section>
