@@ -325,7 +325,7 @@ export async function deleteListingImage(session: SupabaseSession, url: string):
 }
 
 export async function deleteListingImages(session: SupabaseSession, urls: string[]): Promise<void> {
-  const prefixes = urls.map((url) => ownedObjectPath(session, url)).filter((value): value is string => Boolean(value));
+  const prefixes = urls.map(objectPathFromPublicUrl).filter((value): value is string => Boolean(value));
   if (!prefixes.length) return;
   await apiRequest<unknown>(`/storage/v1/object/${IMAGE_BUCKET}`, {
     method: "DELETE",
