@@ -10,13 +10,22 @@ import {
 type Props = {
   title?: string;
   onAuthenticated?: () => void;
+  allowSignup?: boolean;
+  notice?: string;
+  loginLabel?: string;
 };
 
 function isEmailNotConfirmed(message: string): boolean {
   return /email not confirmed|email.*confirm/i.test(message);
 }
 
-export default function SupabaseAuthCard({ title = "FUAD account seeni", onAuthenticated }: Props) {
+export default function SupabaseAuthCard({
+  title = "FUAD account seeni",
+  onAuthenticated,
+  allowSignup = true,
+  notice = "Supabase Auth fayyadama. Password kee app ykn admin bira hin darbu; Supabase qofa irratti mirkanaa'a.",
+  loginLabel = "Login",
+}: Props) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -33,7 +42,7 @@ export default function SupabaseAuthCard({ title = "FUAD account seeni", onAuthe
     setError("");
     setMessage("");
     try {
-      if (mode === "signup") {
+      if (mode === "signup" && allowSignup) {
         const result = await signUpWithConfirmationRedirect(email.trim(), password, fullName.trim());
         if (!result.session) {
           setConfirmationPending(true);
@@ -84,11 +93,11 @@ export default function SupabaseAuthCard({ title = "FUAD account seeni", onAuthe
 
   return (
     <section className="ops-card">
-      <div className="ops-note">Supabase Auth fayyadama. Password kee app ykn admin bira hin darbu; Supabase qofa irratti mirkanaa'a.</div>
+      <div className="ops-note">{notice}</div>
       <h2 style={{ marginTop: 20 }}>{title}</h2>
       <form onSubmit={submit}>
         <div className="ops-grid">
-          {mode === "signup" && (
+          {allowSignup && mode === "signup" && (
             <label className="ops-field ops-span-2">Maqaa guutuu
               <input value={fullName} onChange={(event) => setFullName(event.target.value)} minLength={2} required placeholder="Maqaa kee" />
             </label>
@@ -103,10 +112,12 @@ export default function SupabaseAuthCard({ title = "FUAD account seeni", onAuthe
         {error && <p className="ops-alert" role="alert">{error}</p>}
         {message && <p className="ops-success" role="status">{message}</p>}
         <div className="ops-actions">
-          <button className="ops-button" type="submit" disabled={busy || resending}>{busy ? "Egaa jira…" : mode === "login" ? "Login" : "Account uumi"}</button>
-          <button className="ops-button secondary" type="button" disabled={busy || resending} onClick={() => { setMode((current) => current === "login" ? "signup" : "login"); setError(""); setMessage(""); setConfirmationPending(false); }}>
-            {mode === "login" ? "Account haaraa uumi" : "Account qaba — Login"}
-          </button>
+          <button className="ops-button" type="submit" disabled={busy || resending}>{busy ? "Egaa jira…" : mode === "login" ? loginLabel : "Account uumi"}</button>
+          {allowSignup && (
+            <button className="ops-button secondary" type="button" disabled={busy || resending} onClick={() => { setMode((current) => current === "login" ? "signup" : "login"); setError(""); setMessage(""); setConfirmationPending(false); }}>
+              {mode === "login" ? "Account haaraa uumi" : "Account qaba — Login"}
+            </button>
+          )}
           {confirmationPending && (
             <button className="ops-button secondary" type="button" disabled={busy || resending || !email.trim()} onClick={() => void resendConfirmation()}>
               {resending ? "Ergaa jira…" : "Confirmation email irra deebi'i ergi"}
