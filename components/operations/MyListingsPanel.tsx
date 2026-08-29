@@ -67,7 +67,10 @@ export default function MyListingsPanel() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const stats = useMemo(() => ({
     total: listings.length,
@@ -253,7 +256,7 @@ export default function MyListingsPanel() {
         </label>
       </div>
 
-      <div className="ops-note">Owner ID Supabase Auth irraa mirkanaa'a. Edit, status, photo delete fi post delete hundi RLS ownership check keessa darbu.</div>
+      <div className="ops-note">{"Owner ID Supabase Auth irraa mirkanaa'a. Edit, status, photo delete fi post delete hundi RLS ownership check keessa darbu."}</div>
       {loading && <p>Supabase keessaa maxxansa kee fidaa jira…</p>}
       {notice && <p className="ops-success" role="status">{notice}</p>}
       {error && <p className="ops-alert" role="alert">{error}</p>}
