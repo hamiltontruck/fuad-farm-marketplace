@@ -8,6 +8,7 @@ import MarketplaceControlBar from "../components/operations/MarketplaceControlBa
 import "./globals.css";
 import "./logo.css";
 import "./operations.css";
+import "./operations-extended.css";
 
 export const metadata: Metadata = {
   title: "FUAD ESMART Marketplace",
