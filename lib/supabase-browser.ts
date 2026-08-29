@@ -51,6 +51,13 @@ export type ListingInput = {
   image_urls: string[];
 };
 
+export type ListingUpdateInput = Partial<Pick<
+  ListingInput,
+  "title" | "price" | "price_suffix" | "location" | "seller_name" | "phone" | "condition" | "description" | "image_urls"
+>> & {
+  status?: ListingStatus;
+};
+
 type ApiError = {
   message?: string;
   msg?: string;
@@ -248,18 +255,18 @@ export async function createListing(session: SupabaseSession, input: ListingInpu
   return mapListing(rows[0]);
 }
 
-export async function updateListing(session: SupabaseSession, id: string, updates: Partial<{ status: ListingStatus; title: string; price: number; description: string }>): Promise<DatabaseListing> {
-  const rows = await apiRequest<ListingRow[]>(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
+export async function updateListing(session: SupabaseSession, id: string, updates: ListingUpdateInput): Promise<DatabaseListing> {
+  const rows = await apiRequest<ListingRow[]>(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}&owner_id=eq.${encodeURIComponent(session.user.id)}`, {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
     body: JSON.stringify(updates),
   }, session.access_token);
-  if (!rows[0]) throw new Error("Maxxansa jijjiiruu hin dandeenye.");
+  if (!rows[0]) throw new Error("Maxxansa jijjiiruu hin dandeenye. Owner account fi RLS mirkaneessi.");
   return mapListing(rows[0]);
 }
 
 export async function deleteListing(session: SupabaseSession, id: string): Promise<void> {
-  await apiRequest<unknown>(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
+  await apiRequest<unknown>(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}&owner_id=eq.${encodeURIComponent(session.user.id)}`, {
     method: "DELETE",
     headers: { Prefer: "return=minimal" },
   }, session.access_token);
@@ -303,8 +310,22 @@ function objectPathFromPublicUrl(url: string): string | null {
   return decodeURIComponent(url.slice(index + marker.length));
 }
 
+function ownedObjectPath(session: SupabaseSession, url: string): string | null {
+  const path = objectPathFromPublicUrl(url);
+  return path?.startsWith(`${session.user.id}/`) ? path : null;
+}
+
+export async function deleteListingImage(session: SupabaseSession, url: string): Promise<void> {
+  const path = ownedObjectPath(session, url);
+  if (!path) throw new Error("Suuraan kun account kee jalatti hin argamu.");
+  await apiRequest<unknown>(`/storage/v1/object/${IMAGE_BUCKET}`, {
+    method: "DELETE",
+    body: JSON.stringify({ prefixes: [path] }),
+  }, session.access_token);
+}
+
 export async function deleteListingImages(session: SupabaseSession, urls: string[]): Promise<void> {
-  const prefixes = urls.map(objectPathFromPublicUrl).filter((value): value is string => Boolean(value));
+  const prefixes = urls.map((url) => ownedObjectPath(session, url)).filter((value): value is string => Boolean(value));
   if (!prefixes.length) return;
   await apiRequest<unknown>(`/storage/v1/object/${IMAGE_BUCKET}`, {
     method: "DELETE",
