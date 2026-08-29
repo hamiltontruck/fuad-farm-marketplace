@@ -6,6 +6,7 @@ import {
   deleteListingImages,
   fetchAdminListings,
   fetchModerationEvents,
+  getProfile,
   getSession,
   moderateListing,
   signOut,
@@ -16,9 +17,11 @@ import SupabaseAuthCard from "./SupabaseAuthCard";
 import type { DatabaseListing, ListingStatus } from "./types";
 
 type ModerationStatus = Extract<ListingStatus, "active" | "sold" | "hidden">;
+type AdminAccessStatus = "checking" | "signed-out" | "denied" | "allowed" | "error";
 
 export default function AdminPanel() {
   const [session, setSession] = useState<SupabaseSession | null | undefined>(undefined);
+  const [accessStatus, setAccessStatus] = useState<AdminAccessStatus>("checking");
   const [listings, setListings] = useState<DatabaseListing[]>([]);
   const [events, setEvents] = useState<ModerationEvent[]>([]);
   const [reasons, setReasons] = useState<Record<string, string>>({});
@@ -37,17 +40,30 @@ export default function AdminPanel() {
       const activeSession = currentSession === undefined ? await getSession() : currentSession;
       setSession(activeSession);
       if (!activeSession) {
+        setAccessStatus("signed-out");
         setListings([]);
         setEvents([]);
         return;
       }
+
+      setAccessStatus("checking");
+      const profile = await getProfile(activeSession);
+      if (!profile?.is_admin) {
+        setAccessStatus("denied");
+        setListings([]);
+        setEvents([]);
+        return;
+      }
+
       const [nextListings, nextEvents] = await Promise.all([
         fetchAdminListings(activeSession),
         fetchModerationEvents(activeSession),
       ]);
+      setAccessStatus("allowed");
       setListings(nextListings);
       setEvents(nextEvents);
     } catch (caught) {
+      setAccessStatus("error");
       setListings([]);
       setEvents([]);
       setError(caught instanceof Error ? caught.message : "Admin listings load failed.");
@@ -89,6 +105,16 @@ export default function AdminPanel() {
       return null;
     }
     return reason;
+  }
+
+  async function switchAccount() {
+    await signOut();
+    setSession(null);
+    setAccessStatus("signed-out");
+    setListings([]);
+    setEvents([]);
+    setError("");
+    setNotice("");
   }
 
   async function refreshEvents(activeSession: SupabaseSession) {
@@ -143,8 +169,50 @@ export default function AdminPanel() {
     }
   }
 
-  if (session === undefined) return <section className="ops-card"><p>Supabase admin account ilaalaa jira…</p></section>;
-  if (!session) return <SupabaseAuthCard title="Admin account seeni" onAuthenticated={() => void load()} />;
+  if (session === undefined || accessStatus === "checking") {
+    return <section className="ops-card"><p>Supabase admin access mirkaneessaa jira…</p></section>;
+  }
+
+  if (!session || accessStatus === "signed-out") {
+    return (
+      <SupabaseAuthCard
+        title="Admin account seeni"
+        allowSignup={false}
+        loginLabel="Admin seeni"
+        notice="Admin page irratti account haaraa hin uumamu. Supabase profiles keessatti is_admin=true ta'e qofa seenuu danda'a."
+        onAuthenticated={() => void load()}
+      />
+    );
+  }
+
+  if (accessStatus === "denied") {
+    return (
+      <section className="ops-card ops-access-card">
+        <span className="ops-eyebrow">ACCESS DENIED</span>
+        <h2>Account kun Admin miti</h2>
+        <p className="ops-alert" role="alert">Supabase profile account kanaa keessatti <strong>is_admin=true</strong> hin jiru. Admin data fi moderation action RLS serveriin cufameera.</p>
+        <div className="ops-note">Account seene: <strong>{session.user.email ?? session.user.id}</strong></div>
+        <div className="ops-actions">
+          <button className="ops-button" type="button" onClick={() => void switchAccount()}>Admin account biraa seeni</button>
+          <a className="ops-button secondary" href="/customer-dashboard">Customer dashboard deebi'i</a>
+        </div>
+      </section>
+    );
+  }
+
+  if (accessStatus === "error") {
+    return (
+      <section className="ops-card ops-access-card">
+        <span className="ops-eyebrow">ADMIN CONNECTION</span>
+        <h2>Admin access check hin xumuramne</h2>
+        <p className="ops-alert" role="alert">{error || "Supabase admin access check failed."}</p>
+        <div className="ops-actions">
+          <button className="ops-button" type="button" onClick={() => void load(session)} disabled={loading}>Irra deebi'i</button>
+          <button className="ops-button secondary" type="button" onClick={() => void switchAccount()}>Account jijjiiri</button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="ops-card">
@@ -168,7 +236,7 @@ export default function AdminPanel() {
       </div>
       <div className="ops-actions">
         <button className="ops-button secondary" type="button" onClick={() => void load(session)} disabled={loading}>Refresh Supabase</button>
-        <button className="ops-button secondary" type="button" onClick={() => void signOut().then(() => { setSession(null); setListings([]); setEvents([]); setError(""); })}>Logout</button>
+        <button className="ops-button secondary" type="button" onClick={() => void switchAccount()}>Logout</button>
         <span className="ops-pill">{visible.length} shown / {listings.length} total</span>
       </div>
       {loading && <p>Supabase admin database fidaa jira…</p>}
