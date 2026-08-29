@@ -35,6 +35,30 @@ export type Profile = {
   is_admin: boolean;
 };
 
+export type MarketplaceNotification = {
+  id: string;
+  user_id: string;
+  listing_id: string | null;
+  type: "moderation_status" | "moderation_delete";
+  title: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+};
+
+export type ModerationEvent = {
+  id: string;
+  listing_id: string | null;
+  actor_id: string | null;
+  owner_id: string | null;
+  listing_title: string;
+  action: "activate" | "mark_sold" | "hide" | "delete";
+  previous_status: string | null;
+  new_status: string | null;
+  reason: string;
+  created_at: string;
+};
+
 export type ListingInput = {
   title: string;
   category: string;
@@ -83,6 +107,11 @@ type ListingRow = {
   image_urls: string[] | null;
   status: ListingStatus;
   verified: boolean;
+  created_at: string;
+};
+
+type SavedListingRow = {
+  listing_id: string;
   created_at: string;
 };
 
@@ -243,6 +272,80 @@ export async function fetchAdminListings(session: SupabaseSession): Promise<Data
   if (!profile?.is_admin) throw new Error("Account kun admin miti. Supabase profiles keessatti is_admin=true ta'uu qaba.");
   const rows = await apiRequest<ListingRow[]>("/rest/v1/listings?select=*&order=created_at.desc&limit=250", {}, session.access_token);
   return rows.map(mapListing);
+}
+
+export async function fetchSavedListingIds(session: SupabaseSession): Promise<string[]> {
+  const rows = await apiRequest<SavedListingRow[]>(`/rest/v1/saved_listings?select=listing_id,created_at&user_id=eq.${encodeURIComponent(session.user.id)}&order=created_at.desc`, {}, session.access_token);
+  return rows.map((row) => row.listing_id);
+}
+
+export async function fetchSavedListings(session: SupabaseSession): Promise<DatabaseListing[]> {
+  const ids = await fetchSavedListingIds(session);
+  if (!ids.length) return [];
+  const rows = await apiRequest<ListingRow[]>(`/rest/v1/listings?select=*&id=in.(${ids.join(",")})&order=created_at.desc`, {}, session.access_token);
+  return rows.map(mapListing);
+}
+
+export async function saveListing(session: SupabaseSession, listingId: string): Promise<void> {
+  await apiRequest<unknown>("/rest/v1/saved_listings", {
+    method: "POST",
+    headers: { Prefer: "return=minimal,resolution=ignore-duplicates" },
+    body: JSON.stringify({ user_id: session.user.id, listing_id: listingId }),
+  }, session.access_token);
+}
+
+export async function unsaveListing(session: SupabaseSession, listingId: string): Promise<void> {
+  await apiRequest<unknown>(`/rest/v1/saved_listings?user_id=eq.${encodeURIComponent(session.user.id)}&listing_id=eq.${encodeURIComponent(listingId)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  }, session.access_token);
+}
+
+export async function fetchNotifications(session: SupabaseSession): Promise<MarketplaceNotification[]> {
+  return apiRequest<MarketplaceNotification[]>(`/rest/v1/notifications?select=*&user_id=eq.${encodeURIComponent(session.user.id)}&order=created_at.desc&limit=100`, {}, session.access_token);
+}
+
+export async function markNotificationRead(session: SupabaseSession, notificationId: string): Promise<void> {
+  await apiRequest<unknown>(`/rest/v1/notifications?id=eq.${encodeURIComponent(notificationId)}&user_id=eq.${encodeURIComponent(session.user.id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ read_at: new Date().toISOString() }),
+  }, session.access_token);
+}
+
+export async function markAllNotificationsRead(session: SupabaseSession): Promise<void> {
+  await apiRequest<unknown>(`/rest/v1/notifications?user_id=eq.${encodeURIComponent(session.user.id)}&read_at=is.null`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ read_at: new Date().toISOString() }),
+  }, session.access_token);
+}
+
+export async function deleteNotification(session: SupabaseSession, notificationId: string): Promise<void> {
+  await apiRequest<unknown>(`/rest/v1/notifications?id=eq.${encodeURIComponent(notificationId)}&user_id=eq.${encodeURIComponent(session.user.id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" },
+  }, session.access_token);
+}
+
+export async function fetchModerationEvents(session: SupabaseSession): Promise<ModerationEvent[]> {
+  const profile = await getProfile(session);
+  if (!profile?.is_admin) throw new Error("Admin access required.");
+  return apiRequest<ModerationEvent[]>("/rest/v1/moderation_events?select=*&order=created_at.desc&limit=50", {}, session.access_token);
+}
+
+export async function moderateListing(session: SupabaseSession, listingId: string, status: "active" | "sold" | "hidden", reason: string): Promise<void> {
+  await apiRequest<unknown>("/rest/v1/rpc/admin_moderate_listing", {
+    method: "POST",
+    body: JSON.stringify({ p_listing_id: listingId, p_status: status, p_reason: reason }),
+  }, session.access_token);
+}
+
+export async function adminDeleteListing(session: SupabaseSession, listingId: string, reason: string): Promise<void> {
+  await apiRequest<unknown>("/rest/v1/rpc/admin_delete_listing", {
+    method: "POST",
+    body: JSON.stringify({ p_listing_id: listingId, p_reason: reason }),
+  }, session.access_token);
 }
 
 export async function createListing(session: SupabaseSession, input: ListingInput): Promise<DatabaseListing> {

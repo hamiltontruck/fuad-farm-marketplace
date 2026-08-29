@@ -1,11 +1,16 @@
+import Link from "next/link";
+
 export default function MarketplaceControlBar() {
   return (
     <nav className="ops-floating-nav" aria-label="Marketplace database controls">
-      <a href="/post">＋ Photo post</a>
-      <a href="/live-listings">Cloud posts</a>
-      <a href="/customer-dashboard">Customer dashboard</a>
-      <a href="/admin">Admin</a>
-      <a href="/system-check">Check</a>
+      <Link href="/post">＋ Photo post</Link>
+      <Link href="/live-listings">Cloud posts</Link>
+      <Link href="/saved">♡ Saved</Link>
+      <Link href="/customer-dashboard">Dashboard</Link>
+      <Link href="/broker-dashboard">Broker</Link>
+      <Link href="/notifications">Alerts</Link>
+      <Link href="/admin">Admin</Link>
+      <Link href="/system-check">Check</Link>
     </nav>
   );
 }
