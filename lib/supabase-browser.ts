@@ -256,17 +256,17 @@ export async function createListing(session: SupabaseSession, input: ListingInpu
 }
 
 export async function updateListing(session: SupabaseSession, id: string, updates: ListingUpdateInput): Promise<DatabaseListing> {
-  const rows = await apiRequest<ListingRow[]>(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}&owner_id=eq.${encodeURIComponent(session.user.id)}`, {
+  const rows = await apiRequest<ListingRow[]>(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
     body: JSON.stringify(updates),
   }, session.access_token);
-  if (!rows[0]) throw new Error("Maxxansa jijjiiruu hin dandeenye. Owner account fi RLS mirkaneessi.");
+  if (!rows[0]) throw new Error("Maxxansa jijjiiruu hin dandeenye. RLS fi account access mirkaneessi.");
   return mapListing(rows[0]);
 }
 
 export async function deleteListing(session: SupabaseSession, id: string): Promise<void> {
-  await apiRequest<unknown>(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}&owner_id=eq.${encodeURIComponent(session.user.id)}`, {
+  await apiRequest<unknown>(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Prefer: "return=minimal" },
   }, session.access_token);
